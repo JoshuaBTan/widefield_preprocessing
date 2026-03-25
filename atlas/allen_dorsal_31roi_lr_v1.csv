@@ -1,0 +1,63 @@
+﻿Idx,ROI_name,Hemisphere,Allen_ID,Allen_acronym,Allen_name
+1,L_ACAd,Left,11,ACAd,Dorsal Anterior Cingulate Area
+2,L_AUDd,Left,97,AUDd,Dorsal Auditory Area
+3,L_AUDp,Left,104,AUDp,Primary Auditory Area
+4,L_AUDpo,Left,111,AUDpo,Posterior Auditory Area
+5,L_AUDv,Left,118,AUDv,Ventral Auditory Area
+6,L_FRP,Left,395,FRP,Frontal Pole
+7,L_MOp,Left,578,MOp,Primary Motor Area
+8,L_MOs,Left,584,MOs,Secondary Motor Area
+9,L_PL,Left,753,PL,Prelimbic Area
+10,L_RSPagl,Left,866,RSPagl,Lateral Agranular Retrosplenial Area
+11,L_RSPd,Left,872,RSPd,Dorsal Retrosplenial Area
+12,L_RSPv,Left,879,RSPv,Ventral Retrosplenial Area
+13,L_SSp_bfd,Left,970,SSp_bfd,Primary Somatosensory Area (Barrel)
+14,L_SSp_ll,Left,977,SSp_ll,Primary Somatosensory Area (Lower Limb)
+15,L_SSp_m,Left,984,SSp_m,Primary Somatosensory Area (Mouth)
+16,L_SSp_n,Left,991,SSp_n,Primary Somatosensory Area (Nose)
+17,L_SSp_tr,Left,998,SSp_tr,Primary Somatosensory Area (Trunk)
+18,L_SSp_ul,Left,1005,SSp_ul,Primary Somatosensory Area (Upper Limb)
+19,L_SSp_un,Left,1012,SSp_un,Primary Somatosensory Area (Unassigned)
+20,L_SSs,Left,1019,SSs,Suplemental Somatosensory Area
+21,L_TEa,Left,1060,TEa,Temporal Association Area
+22,L_VISal,Left,1125,VISal,Anterolateral Visual Area
+23,L_VISam,Left,1132,VISam,Anteromedial Visual Area
+24,L_VISl,Left,1146,VISl,Lateral Visual Area
+25,L_VISp,Left,1153,VISp,Primary Visual Area
+26,L_VISpl,Left,1160,VISpl,Posterolateral Visual Area
+27,L_VISpm,Left,1167,VISpm,Posteromedial Visual Area
+28,L_VISa,Left,1207,VISa,Anterior Visual Area (Posterior Parietal)
+29,L_VISli,Left,1214,VISli,Laterointermediate Area
+30,L_VISpor,Left,1221,VISpor,Postrhinal Area
+31,L_VISrl,Left,1228,VISrl,Rostrolateral Visual Area
+32,R_ACAd,Right,11,ACAd,Dorsal Anterior Cingulate Area
+33,R_AUDd,Right,97,AUDd,Dorsal Auditory Area
+34,R_AUDp,Right,104,AUDp,Primary Auditory Area
+35,R_AUDpo,Right,111,AUDpo,Posterior Auditory Area
+36,R_AUDv,Right,118,AUDv,Ventral Auditory Area
+37,R_FRP,Right,395,FRP,Frontal Pole
+38,R_MOp,Right,578,MOp,Primary Motor Area
+39,R_MOs,Right,584,MOs,Secondary Motor Area
+40,R_PL,Right,753,PL,Prelimbic Area
+41,R_RSPagl,Right,866,RSPagl,Lateral Agranular Retrosplenial Area
+42,R_RSPd,Right,872,RSPd,Dorsal Retrosplenial Area
+43,R_RSPv,Right,879,RSPv,Ventral Retrosplenial Area
+44,R_SSp_bfd,Right,970,SSp_bfd,Primary Somatosensory Area (Barrel)
+45,R_SSp_ll,Right,977,SSp_ll,Primary Somatosensory Area (Lower Limb)
+46,R_SSp_m,Right,984,SSp_m,Primary Somatosensory Area (Mouth)
+47,R_SSp_n,Right,991,SSp_n,Primary Somatosensory Area (Nose)
+48,R_SSp_tr,Right,998,SSp_tr,Primary Somatosensory Area (Trunk)
+49,R_SSp_ul,Right,1005,SSp_ul,Primary Somatosensory Area (Upper Limb)
+50,R_SSp_un,Right,1012,SSp_un,Primary Somatosensory Area (Unassigned)
+51,R_SSs,Right,1019,SSs,Suplemental Somatosensory Area
+52,R_TEa,Right,1060,TEa,Temporal Association Area
+53,R_VISal,Right,1125,VISal,Anterolateral Visual Area
+54,R_VISam,Right,1132,VISam,Anteromedial Visual Area
+55,R_VISl,Right,1146,VISl,Lateral Visual Area
+56,R_VISp,Right,1153,VISp,Primary Visual Area
+57,R_VISpl,Right,1160,VISpl,Posterolateral Visual Area
+58,R_VISpm,Right,1167,VISpm,Posteromedial Visual Area
+59,R_VISa,Right,1207,VISa,Anterior Visual Area (Posterior Parietal)
+60,R_VISli,Right,1214,VISli,Laterointermediate Area
+61,R_VISpor,Right,1221,VISpor,Postrhinal Area
+62,R_VISrl,Right,1228,VISrl,Rostrolateral Visual Area
