@@ -116,7 +116,3 @@ All outputs are saved as `.pkl` files at paths specified in `config.yaml`:
 | `green_ref` / `blue_ref` / `red_ref` | Median reference frames per channel |
 | `transform` | Registration transform (mouse_to_atlas mode only) |
 
-## Notes
-
-- Atlas files (`.mat`) and raw data files are **not** included in this repository. See `config_template.yaml` for expected formats.
-- `config.yaml` is excluded from version control via `.gitignore` to avoid committing local paths.
