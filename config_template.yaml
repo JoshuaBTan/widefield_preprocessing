@@ -98,17 +98,19 @@ wavelength:
   blue: 450
 
 output:
-  # Directory must exist before running the pipeline
-  pixel_ts:      "/path/to/output/pixel_ts.pkl"
-  roi_ts:        "/path/to/output/roi_ts.pkl"
-  green_pixel:   "/path/to/output/green_pixel.pkl"
-  green_ts:      "/path/to/output/green_ts.pkl"
-  hemo_ts:       "/path/to/output/hemo_ts.pkl"
-  hemopixel_ts:  "/path/to/output/hemopixel_ts.pkl"
-  roi_id:        "/path/to/output/roi_id.pkl"
-  atlas_mask:    "/path/to/output/atlas_mask.pkl"
-  brain_mask:    "/path/to/output/brain_mask.pkl"
-  green_ref:     "/path/to/output/green_ref.pkl"
-  blue_ref:      "/path/to/output/blue_ref.pkl"
-  red_ref:       "/path/to/output/red_ref.pkl"
-  transform:     "/path/to/output/transform.pkl"
+  # Directory where all output files will be saved (must exist before running)
+  dir: "/path/to/output"
+  # Output filenames (saved inside dir)
+  pixel_ts:      "pixel_ts.pkl"
+  roi_ts:        "roi_ts.pkl"
+  green_pixel:   "green_pixel.pkl"
+  green_ts:      "green_ts.pkl"
+  hemo_ts:       "hemo_ts.pkl"
+  hemopixel_ts:  "hemopixel_ts.pkl"
+  roi_id:        "roi_id.pkl"
+  atlas_mask:    "atlas_mask.pkl"
+  brain_mask:    "brain_mask.pkl"
+  green_ref:     "green_ref.pkl"
+  blue_ref:      "blue_ref.pkl"
+  red_ref:       "red_ref.pkl"
+  transform:     "transform.pkl"
