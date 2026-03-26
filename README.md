@@ -38,7 +38,7 @@ conda activate widefield
 cp config_template.yaml config.yaml
 ```
 
-2. Edit `config.yaml` to point to your data, atlas, and desired output directory.
+2. Edit `config.yaml` to point to your data, atlas, and desired output directory. Also choose parameter values appropriate for the data.
 
 3. Run the pipeline:
 
