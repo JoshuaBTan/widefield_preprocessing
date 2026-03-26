@@ -1,0 +1,113 @@
+data:
+  # Path to your raw interleaved TIFF stack (raw data)
+  filepath: "/path/to/your/data/session.tiff"
+
+experiment:
+  # "task"  --> no temporal filtering applied
+  # "rest"  --> bandpass (highpass/lowpass) filter applied
+  type: "task"
+
+downsampling:
+  # Spatial downsampling factor applied to the raw stack before processing
+  # e.g. 0.5 --> 2048x2048 becomes 1024x1024
+  factor: 0.5
+
+channel_separation:
+  # Number of frames per illumination cycle (one frame per wavelength)
+  # Typically we do green --> red --> blue but need to check this
+  frames_per_cycle: 3
+  # Order of channels within each cycle
+  order: ["green", "red", "blue"]
+  # Effective sampling rate per channel (Hz), how many frames per second
+  fs: 10
+
+reference:
+  # Optional: path to a reference image for cross-session alignment
+  filepath:
+
+upsample_factor:
+  # Sub-pixel upsampling for phase-correlation motion correction per channel
+  # How accurate the motion correction should be
+  blue: 10
+  green: 10
+  red: 10
+
+normalization:
+  # Frames used to estimate baseline fluorescence F0
+  baseline_frames: [10, 100]
+  # Method for computing DeltaF/F (multiple options): 
+  # F0 = baseline mean, F0t = baseline mean for a specific window
+  # 1) "divide" --> F / F0 --> use this for task data
+  # 2) "mean" --> (F - F0) / F0 --> traditional method
+  # 3) "roll_mean" --> (F - F0t) / F0t --> use for resting-state
+  method: "divide"
+  # Number of 90 degree counter-clockwise rotations to reorient the FOV
+  rotate: 3
+  # Bandpass filter cutoffs (Hz) - only applied when experiment.type = "rest"
+  highpass: 0.02 # only frequency higher than 0.02 Hz is allowed
+  lowpass: 2.0 # only frequency lower than 2.0 Hz is allowed
+
+hemodynamic_correction:
+  # Method for correcting hemodynamic contamination in the blue (calcium) channel
+  # "regression" --> pixel-wise linear regression against green channel
+  method: "regression"
+  # Set to true to generate QC plots during correction
+  qc: false
+
+template:
+  # Path to the average brain template (.mat) used as registration target
+  filepath: "/path/to/atlas/avgtemplate_CCF_144x113.mat"
+
+atlas:
+  # Path to the Allen Atlas parcellation (.mat)
+  filepath: "/path/to/atlas/allen_dorsal_31roi_lr_v1_144x113.mat"
+  # Path to the ROI label description file (ITK-SNAP color format)
+  labels: "/path/to/atlas/labelDescription_ITKSNAPColor.txt"
+  # Registration similarity metric: "similarity" or "affine"
+  method: "similarity"
+  # Number of landmark point pairs for registration
+  num_points: 2
+  # Registration direction:
+  #   "atlas_to_mouse" (default) --> atlas warped to native mouse space
+  #   "mouse_to_atlas"           --> data transformed to standardized atlas space
+  registration_direction: "atlas_to_mouse"
+
+brain_mask:
+  # Method for brain mask generation: "simple"
+  method: "simple"
+  qc: false
+
+roi_extraction:
+  # Minimum % pixel overlap between an ROI and the brain mask to be included
+  min_overlap: 25
+  qc: false
+
+hemodynamic_extraction:
+  # Method for extracting hemodynamic signals
+  # "dual_wavelength" --> uses red and green channels
+  method: "dual_wavelength"
+  baseline_frames: [10, 100]
+  min_overlap: 25
+  qc: false
+
+wavelength:
+  # Center wavelengths (nm) for each illumination channel
+  green: 530
+  red: 625
+  blue: 450
+
+output:
+  # Directory must exist before running the pipeline
+  pixel_ts:      "/path/to/output/pixel_ts.pkl"
+  roi_ts:        "/path/to/output/roi_ts.pkl"
+  green_pixel:   "/path/to/output/green_pixel.pkl"
+  green_ts:      "/path/to/output/green_ts.pkl"
+  hemo_ts:       "/path/to/output/hemo_ts.pkl"
+  hemopixel_ts:  "/path/to/output/hemopixel_ts.pkl"
+  roi_id:        "/path/to/output/roi_id.pkl"
+  atlas_mask:    "/path/to/output/atlas_mask.pkl"
+  brain_mask:    "/path/to/output/brain_mask.pkl"
+  green_ref:     "/path/to/output/green_ref.pkl"
+  blue_ref:      "/path/to/output/blue_ref.pkl"
+  red_ref:       "/path/to/output/red_ref.pkl"
+  transform:     "/path/to/output/transform.pkl"
