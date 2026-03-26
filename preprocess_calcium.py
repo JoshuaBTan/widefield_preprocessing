@@ -225,7 +225,8 @@ def run_pipeline(config_file="config.yaml"):
             method=config["hemodynamic_extraction"]["method"],
             baseline_frames=slice(*config["hemodynamic_extraction"]["baseline_frames"]),
             green_wavelength=config["wavelength"]["green"],
-            red_wavelength=config["wavelength"]["red"]
+            red_wavelength=config["wavelength"]["red"],
+            extinction_filepath=config["hemodynamic_extraction"]["extinction_filepath"]
         )
         
         # Extract hemodynamic ROI timecourses
@@ -363,7 +364,8 @@ def run_pipeline(config_file="config.yaml"):
             method=config["hemodynamic_extraction"]["method"],
             baseline_frames=slice(*config["hemodynamic_extraction"]["baseline_frames"]),
             green_wavelength=config["wavelength"]["green"],
-            red_wavelength=config["wavelength"]["red"]
+            red_wavelength=config["wavelength"]["red"],
+            extinction_filepath=config["hemodynamic_extraction"]["extinction_filepath"]
         )
     
         # Transform each hemodynamic signal to atlas space, then extract ROIs
