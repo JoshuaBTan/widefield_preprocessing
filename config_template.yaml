@@ -89,6 +89,7 @@ hemodynamic_extraction:
   baseline_frames: [10, 100]
   min_overlap: 25
   qc: false
+  extinction_filepath: "/path/to/NIRS_extData.mat"
 
 wavelength:
   # Center wavelengths (nm) for each illumination channel
