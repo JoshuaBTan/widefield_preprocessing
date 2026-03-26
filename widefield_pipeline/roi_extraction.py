@@ -174,21 +174,21 @@ def extract_timecourses_from_atlas_fixed(
 # -----------------------
 # Extinction coefficient data
 # -----------------------
-def get_extinction_coefficients():
+def get_extinction_coefficients(filepath):
     """
     Returns extinction coefficients for HbO and HbR at common wavelengths.
     Based on Ma et al. 2016 tabulated data (cm^-1 M^-1).
     """
     
     # Use values specified by Ma et al., 2016
-    NIRS_val = sio.loadmat("C:/Users/User/OneDrive/Documents/Calcium_Imaging/thanh/NIRS_extData.mat")
+    NIRS_val = sio.loadmat(filepath)
     wavelengths = NIRS_val['lambda'].ravel()
     hbo_ext = NIRS_val['eHbO2'].ravel()
     hbr_ext = NIRS_val['eHb'].ravel()
     
     return wavelengths, hbo_ext, hbr_ext
 
-def get_extinction_at_wavelength(wavelength, species='hbo'):
+def get_extinction_at_wavelength(wavelength, species='hbo', extinction_filepath=None):
     """
     Get extinction coefficient at specific wavelength via interpolation.
     
@@ -204,7 +204,7 @@ def get_extinction_at_wavelength(wavelength, species='hbo'):
     float or array
         Extinction coefficient(s) in cm^-1 M^-1
     """
-    wavelengths, hbo_ext, hbr_ext = get_extinction_coefficients()
+    wavelengths, hbo_ext, hbr_ext = get_extinction_coefficients(extinction_filepath)
     
     if species.lower() == 'hbo':
         ext_data = hbo_ext
@@ -284,7 +284,8 @@ def convert_to_hemoglobin_concentrations(green_signal, red_signal,
                                        green_wavelength=530, red_wavelength=625,
                                        baseline_frames=slice(0, 100),
                                        pathlength_green=0.057, pathlength_red=0.25,
-                                       clip_ratio=False):
+                                       clip_ratio=False,
+                                        extinction_filepath=None):
     """
     Convert dual-wavelength optical data to HbO, HbR, and HbT concentrations.
     
@@ -377,10 +378,10 @@ def convert_to_hemoglobin_concentrations(green_signal, red_signal,
     red_od = np.nan_to_num(red_od, nan=0.0, posinf=0.0, neginf=0.0)
     
     # Get extinction coefficients
-    eps_hbo_green = get_extinction_at_wavelength(green_wavelength, 'hbo')
-    eps_hbr_green = get_extinction_at_wavelength(green_wavelength, 'hbr')
-    eps_hbo_red = get_extinction_at_wavelength(red_wavelength, 'hbo')
-    eps_hbr_red = get_extinction_at_wavelength(red_wavelength, 'hbr')
+    eps_hbo_green = get_extinction_at_wavelength(green_wavelength, 'hbo', extinction_filepath)
+    eps_hbr_green = get_extinction_at_wavelength(green_wavelength, 'hbr', extinction_filepath)
+    eps_hbo_red = get_extinction_at_wavelength(red_wavelength, 'hbo', extinction_filepath)
+    eps_hbr_red = get_extinction_at_wavelength(red_wavelength, 'hbr', extinction_filepath)
     
     print(f"Extinction coefficients:")
     print(f"  Green ({green_wavelength}nm): HbO={eps_hbo_green:.0f}, HbR={eps_hbr_green:.0f}")
