@@ -19,6 +19,8 @@ A Python pipeline for preprocessing widefield calcium imaging data, including ch
 
 Install dependencies:
 
+In terminal/command prompt
+
 ```bash
 pip install -r requirements.txt
 ```
