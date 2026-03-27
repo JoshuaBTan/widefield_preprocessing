@@ -11,3 +11,4 @@ dependencies:
   - tifffile
   - matplotlib
   - pip
+  - scikit-learn
