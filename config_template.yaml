@@ -42,7 +42,7 @@ normalization:
   # 3) "roll_mean" --> (F - F0t) / F0t --> use for resting-state
   method: "divide"
   # Number of 90 degree counter-clockwise rotations to reorient the FOV
-  rotate: 3
+  rotate: 1
   # Bandpass filter cutoffs (Hz) - only applied when experiment.type = "rest"
   highpass: 0.02 # only frequency higher than 0.02 Hz is allowed
   lowpass: 2.0 # only frequency lower than 2.0 Hz is allowed
