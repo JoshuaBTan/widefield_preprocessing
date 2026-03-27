@@ -107,10 +107,10 @@ All outputs are saved as `.pkl` files at paths specified in `config.yaml`:
 | `pixel_ts` | Corrected calcium pixel time series |
 | `roi_ts` | Calcium ROI-averaged time series |
 | `green_pixel` | ΔF/F green channel (pixel-level) |
-| `green_ts` | Green ROI time series |
-| `hemo_ts` | Hemodynamic ROI time series |
+| `green_ts` | Green ROI-averaged time series |
+| `hemo_ts` | Hemodynamic ROI-averaged time series |
 | `hemopixel_ts` | Hemodynamic pixel time series |
-| `roi_id` | Valid ROI identifiers |
+| `roi_id` | Allen Brain Region (ROI) labels corresponding to data |
 | `atlas_mask` | Atlas restricted to brain FOV |
 | `brain_mask` | Binary brain mask |
 | `green_ref` / `blue_ref` / `red_ref` | Median reference frames per channel |
