@@ -66,7 +66,7 @@ atlas:
   # Registration similarity metric: "similarity" or "affine"
   method: "similarity"
   # Number of landmark point pairs for registration
-  num_points: 2
+  num_points: 10
   # Registration direction:
   #   "atlas_to_mouse" (default) --> atlas warped to native mouse space
   #   "mouse_to_atlas"           --> data transformed to standardized atlas space
