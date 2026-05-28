@@ -338,16 +338,16 @@ def run_pipeline(config_file="config.yaml"):
         )
     
         # --- Transform reference frames ---
-        print("Transforming reference frames...")
+        #print("Transforming reference frames...")
         #for ref, name in [(red_ref, "red"), (green_ref, "green"), (blue_ref, "blue")]:
             #pass  # done below with named variables
         
-        green_atlas = warp(green_ref, inverse_map=tform.inverse,
-                           output_shape=template.shape, order=1,
-                           preserve_range=True, cval=np.nan)
-        blue_atlas = warp(blue_ref, inverse_map=tform.inverse,
-                          output_shape=template.shape, order=1,
-                          preserve_range=True, cval=np.nan)
+        # green_atlas = warp(green_ref, inverse_map=tform.inverse,
+        #                    output_shape=template.shape, order=1,
+        #                    preserve_range=True, cval=np.nan)
+        # blue_atlas = warp(blue_ref, inverse_map=tform.inverse,
+        #                   output_shape=template.shape, order=1,
+        #                   preserve_range=True, cval=np.nan)
     
         # --- Crop atlas to transformed FOV ---
         atlas_masked, valid_regions = crop_atlas_to_fov(
@@ -408,10 +408,10 @@ def run_pipeline(config_file="config.yaml"):
             pickle.dump(brain_mask_atlas, f)
     
         with open(config["output"]["green_ref"], "wb") as f:
-            pickle.dump(green_atlas, f)
+            pickle.dump(green_ref, f)
     
         with open(config["output"]["blue_ref"], "wb") as f:
-            pickle.dump(blue_atlas, f)
+            pickle.dump(blue_ref, f)
     
         print("\nAll files saved")
         print("Preprocessing was successful")
