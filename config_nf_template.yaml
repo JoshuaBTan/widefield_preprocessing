@@ -1,0 +1,114 @@
+##############################################################################
+#  config_nf_template.yaml
+#
+#  Configuration for FOLLOW-UP RUNS using preprocess_calcium_nf.py
+#  (green + red + blue channels — full hemodynamic extraction).
+#
+#  How to use
+#  ----------
+#  1.  Copy this file and rename it for the specific run, e.g.
+#        config_nf_run2.yaml
+#  2.  Fill in all paths marked with /path/to/...
+#  3.  Point every field under `reference` to the output pkl files that
+#      were produced by the first run (preprocess_calcium.py).
+#  4.  Set `reference.registration_direction` to match whatever was used
+#      in the first run ("atlas_to_mouse" or "mouse_to_atlas").
+#  5.  Run:
+#        python preprocess_calcium_nf.py config_nf_run2.yaml
+##############################################################################
+
+data:
+  # Path to this run's raw interleaved TIFF stack
+  filepath: "/path/to/run2/data.tiff"
+
+experiment:
+  # "task"  --> no temporal filtering applied
+  # "rest"  --> bandpass filter applied
+  type: "rest"
+
+downsampling:
+  # Must match the factor used in run 1 so spatial dimensions are identical
+  factor: 0.5
+
+channel_separation:
+  # Must match run 1
+  frames_per_cycle: 3
+  order: ["green", "red", "blue"]
+  fs: 10
+
+upsample_factor:
+  blue: 10
+  green: 10
+  red: 10
+
+normalization:
+  baseline_frames: [10, 100]
+  # Must match run 1 (same method keeps ΔF/F comparable across runs)
+  method: "roll_mean"
+  # Number of 90-degree counter-clockwise rotations — must match run 1
+  rotate: 3
+  # Bandpass filter cutoffs (Hz) — only applied when experiment.type = "rest"
+  highpass: 0.02
+  lowpass: 2.0
+
+hemodynamic_correction:
+  method: "regression"
+  qc: false
+
+# --------------------------------------------------------------------------
+# Reference files from run 1
+# --------------------------------------------------------------------------
+reference:
+  # Registration direction that was used in run 1 — do not change between runs
+  # Options: "atlas_to_mouse" | "mouse_to_atlas"
+  registration_direction: "atlas_to_mouse"
+
+  # Median reference frames saved by run 1 (used for motion correction)
+  green_ref: "/path/to/run1/output/green_ref.pkl"
+  blue_ref:  "/path/to/run1/output/blue_ref.pkl"
+  red_ref:   "/path/to/run1/output/red_ref.pkl"
+
+  # Brain mask saved by run 1
+  brain_mask: "/path/to/run1/output/brain_mask.pkl"
+
+  # Registered + masked atlas saved by run 1
+  atlas_mask: "/path/to/run1/output/atlas_mask.pkl"
+
+  # Spatial transform saved by run 1  (only needed for mouse_to_atlas runs;
+  # leave the placeholder path for atlas_to_mouse — it will not be read)
+  transform: "/path/to/run1/output/transform.pkl"
+
+# --------------------------------------------------------------------------
+# ROI extraction
+# --------------------------------------------------------------------------
+roi_extraction:
+  min_overlap: 25
+  qc: false
+
+# --------------------------------------------------------------------------
+# Hemodynamic extraction
+# --------------------------------------------------------------------------
+hemodynamic_extraction:
+  method: "dual_wavelength"
+  baseline_frames: [10, 100]
+  min_overlap: 25
+  qc: false
+  extinction_filepath: "/path/to/NIRS_extData.mat"
+
+wavelength:
+  green: 530
+  red: 625
+  blue: 450
+
+# --------------------------------------------------------------------------
+# Output — point to this run's own output folder
+# --------------------------------------------------------------------------
+output:
+  dir: "/path/to/run2/output"
+  pixel_ts:     "pixel_ts.pkl"
+  roi_ts:       "roi_ts.pkl"
+  green_pixel:  "green_pixel.pkl"
+  green_ts:     "green_ts.pkl"
+  hemo_ts:      "hemo_ts.pkl"
+  hemopixel_ts: "hemopixel_ts.pkl"
+  roi_id:       "roi_id.pkl"
