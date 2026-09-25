@@ -281,6 +281,76 @@ def convert_to_hbt_concentration(green_signal, baseline_frames=slice(0, 100)):
     return hbt_signal
     
 
+def convert_to_hbt_single_wavelength(green_signal, baseline_frames=slice(0, 100),
+                                     green_wavelength=530, pathlength_green=0.057,
+                                     extinction_filepath=None):
+    """
+    Calibrated single-wavelength estimate of total hemoglobin (HbT) concentration
+    change from the green channel alone, using the modified Beer-Lambert law.
+
+    With only one wavelength, HbO and HbR cannot be separated. This assumes the
+    green wavelength is close enough to hemoglobin's isosbestic point that
+    averaging the HbO and HbR extinction coefficients at that wavelength gives
+    a reasonable effective extinction coefficient for total hemoglobin. Uses
+    the same tabulated extinction coefficient data (Ma et al., 2016) as
+    convert_to_hemoglobin_concentrations.
+
+    Parameters
+    ----------
+    green_signal : array
+        Raw (non-dF/F) motion-corrected green channel data, (T,H,W)
+    baseline_frames : slice or array
+        Frames used to compute baseline intensity I0
+    green_wavelength : float
+        Center wavelength of green illumination (nm)
+    pathlength_green : float
+        Differential pathlength factor at green wavelength (cm)
+    extinction_filepath : str
+        Path to the .mat file with tabulated extinction coefficients
+
+    Returns
+    -------
+    hbt_signal : array
+        Relative HbT concentration change (μM), same shape as input.
+        Positive = increased total hemoglobin (more absorption, less
+        transmitted/reflected green light).
+    """
+    if green_signal.ndim != 3:
+        raise ValueError("Input must be 3D array (T,H,W)")
+
+    data = green_signal.astype(np.float32)
+    T, H, W = data.shape
+
+    # Baseline intensity I0
+    baseline = np.mean(data[baseline_frames], axis=0)
+    baseline[baseline <= 0] = 1e-6
+
+    ratio = data / baseline
+    with np.errstate(invalid='ignore', divide='ignore'):
+        od = -np.log(ratio)  # optical density change: positive = more absorption
+    od = np.nan_to_num(od, nan=0.0, posinf=0.0, neginf=0.0)
+
+    # Effective extinction coefficient: average of HbO/HbR at this wavelength,
+    # under the isosbestic-point approximation
+    eps_hbo = get_extinction_at_wavelength(green_wavelength, 'hbo', extinction_filepath)
+    eps_hbr = get_extinction_at_wavelength(green_wavelength, 'hbr', extinction_filepath)
+    eps_hbt = (eps_hbo + eps_hbr) / 2
+
+    print(f"Single-wavelength HbT ({green_wavelength}nm): "
+          f"eps_HbO={eps_hbo:.0f}, eps_HbR={eps_hbr:.0f}, eps_HbT(avg)={eps_hbt:.0f} cm^-1 M^-1")
+
+    # Modified Beer-Lambert: OD = eps * pathlength * delta_concentration
+    hbt_conc_M = od / (eps_hbt * pathlength_green)
+    hbt_signal = (hbt_conc_M * 1e6).astype(np.float32)  # convert to μM
+
+    valid_data = hbt_signal[np.isfinite(hbt_signal)]
+    if len(valid_data) > 0:
+        p1, p99 = np.percentile(valid_data, [1, 99])
+        print(f"  HbT (single-wavelength) range (1-99 percentile): [{p1:.2f}, {p99:.2f}] μM")
+
+    return hbt_signal
+
+
 def convert_to_hemoglobin_concentrations(green_signal, red_signal, 
                                        green_wavelength=530, red_wavelength=625,
                                        baseline_frames=slice(0, 100),
