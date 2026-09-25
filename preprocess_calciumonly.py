@@ -24,7 +24,9 @@ from widefield_pipeline.registration_new import (load_allen_atlas, register_atla
                          apply_transform_to_stack, apply_transform_to_mask,
                          crop_atlas_to_fov, make_brain_mask_from_atlas, resample_timeseries,
                          resample_frame, make_brain_mask_fixed)
-from widefield_pipeline.roi_extraction import extract_timecourses_from_atlas_fixed, extract_hemodynamic_signals
+from widefield_pipeline.roi_extraction import (extract_timecourses_from_atlas_fixed, extract_hemodynamic_signals,
+                         convert_to_hbt_single_wavelength)
+from pipeline_utils import build_output_paths
 
 def get_project_root():
     if "__file__" in globals():
@@ -33,8 +35,20 @@ def get_project_root():
         # Spyder / interactive fallback
         return Path.cwd()
     
-def run_pipeline(config_file="config.yaml"):
-    
+def run_pipeline(config_file="config.yaml", data=None):
+    """
+    Run the first-run calcium-only preprocessing pipeline.
+
+    Parameters
+    ----------
+    config_file : str
+        Path to the YAML config file.
+    data : np.ndarray, optional
+        Pre-loaded and pre-downsampled stack (T, H, W). When provided by the
+        batch/discovery script (e.g. for split runs concatenated after
+        downsampling), load_tiff_stack and downsample_stack are skipped.
+        config's data.filepath is still used to derive the output filename prefix.
+    """
     config_path = Path(config_file)
     
     if not config_path.is_absolute():
@@ -45,22 +59,23 @@ def run_pipeline(config_file="config.yaml"):
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    # Build full output paths from dir + filename
-    out_dir = Path(config["output"]["dir"])
-    for key, filename in config["output"].items():
-        if key != "dir":
-            config["output"][key] = str(out_dir / filename)
+    # Build full output paths from BIDS filename + output dir
+    config["output"] = build_output_paths(
+        config["data"]["filepath"],
+        config["output"]["dir"],
+    )
 
-    # Load data
-    stack = load_tiff_stack(config["data"]["filepath"])
-    print("Data load successful")
-
-
-    # Preprocess
-    
-    # Downsample
-    stack_ds = downsample_stack(stack, scale=config["downsampling"]["factor"])    
-    print("Downsample successful")
+    if data is not None:
+        # Pre-loaded stack passed in by batch runner (e.g. concatenated split run)
+        stack_ds = data
+        print(f"Using pre-loaded stack: shape {stack_ds.shape}")
+    else:
+        # Load data
+        stack = load_tiff_stack(config["data"]["filepath"])
+        print("Data load successful")
+        # Downsample
+        stack_ds = downsample_stack(stack, scale=config["downsampling"]["factor"])
+        print("Downsample successful")
     
     # Separate Channels
     ch = separate_channels_from_interleaved(stack_ds, 
@@ -122,9 +137,16 @@ def run_pipeline(config_file="config.yaml"):
             lowcut=config["normalization"]["highpass"],
             highcut=config["normalization"]["lowpass"],
         )
+        green_hp = butter_filter(
+            dff_green_oriented,
+            fs,
+            lowcut=config["normalization"]["highpass"],
+            highcut=config["normalization"]["lowpass"],
+        )
         print("Temporal filtering applied")
     elif config["experiment"]["type"] == "task":
         blue_hp = corrected_blue
+        green_hp = dff_green_oriented
         print("No temporal filtering")
 
     # Load in and resize atlas
@@ -200,7 +222,7 @@ def run_pipeline(config_file="config.yaml"):
         
         # Data stays in mouse space
         data_for_extraction = blue_hp
-        green_for_hemo = green_mc_oriented
+        #green_for_hemo = green_mc_oriented
         
         # Save brain-masked pixel data
         corrected_blue_masked = blue_hp.copy()
@@ -221,17 +243,46 @@ def run_pipeline(config_file="config.yaml"):
         valid_regions = valid_rois
         
         # Extract green signal
-        green_masked = dff_green_oriented.copy()
+        green_masked = green_hp.copy()
         green_masked[:, ~brain_mask] = np.nan
         
         green_timecourses = extract_timecourses_from_atlas_fixed(
-            data=dff_green_oriented,
+            data=green_hp,
             atlas=atlas_masked, 
             brain_mask=brain_mask,
             min_overlap=config["roi_extraction"]["min_overlap"],
             qc=config["roi_extraction"]["qc"]
         )
-        print("Green ROI time series extracted")        
+        print("Green ROI time series extracted")
+
+        # Single-wavelength HbT: calibrated modified Beer-Lambert estimate (μM),
+        # using the tabulated extinction coefficients (isosbestic approximation).
+        # Uses raw motion-corrected green (not dF/F) since the conversion does
+        # its own baseline normalization internally.
+        print("Computing single-wavelength HbT from green channel...")
+        hbt_signal = convert_to_hbt_single_wavelength(
+            green_mc_oriented,
+            baseline_frames=slice(*config["hemodynamic_extraction"]["baseline_frames"]),
+            green_wavelength=config["wavelength"]["green"],
+            pathlength_green=config["hemodynamic_extraction"].get("pathlength_green", 0.057),
+            extinction_filepath=config["hemodynamic_extraction"]["extinction_filepath"]
+        )
+        hbt_masked = hbt_signal.copy()
+        hbt_masked[:, ~brain_mask] = np.nan
+
+        hbt_timecourses, _ = extract_timecourses_from_atlas_fixed(
+            data=hbt_signal,
+            atlas=atlas_masked,
+            brain_mask=brain_mask,
+            min_overlap=config["roi_extraction"]["min_overlap"],
+            qc=config["roi_extraction"]["qc"]
+        )
+        # Wrapped in a dict (keyed 'hbt') to match the dual-wavelength pipeline's
+        # hemo_ts / hemopixel_ts format, even though only one signal is available.
+        hemo_roi_timecourses = {'hbt': hbt_timecourses}
+        hemo_pixel_timecourses = {'hbt': hbt_masked}
+        print("HbT (single-wavelength) ROI time series extracted")
+
         print("\n--- Saving outputs ---")
         
         with open(config["output"]["pixel_ts"], "wb") as f:
@@ -245,7 +296,13 @@ def run_pipeline(config_file="config.yaml"):
             
         with open(config["output"]["green_ts"], "wb") as f:
             pickle.dump(green_timecourses, f)
-            
+
+        with open(config["output"]["hemo_ts"], "wb") as f:
+            pickle.dump(hemo_roi_timecourses, f)
+
+        with open(config["output"]["hemopixel_ts"], "wb") as f:
+            pickle.dump(hemo_pixel_timecourses, f)
+
         with open(config["output"]["roi_id"], "wb") as f:
             pickle.dump(valid_rois, f)
             
@@ -259,15 +316,18 @@ def run_pipeline(config_file="config.yaml"):
             pickle.dump(green_ref, f)
 
         with open(config["output"]["blue_ref"], "wb") as f:
-            pickle.dump(blue_ref, f)       
+            pickle.dump(blue_ref, f)
+
+        with open(config["output"]["transform"], "wb") as f:
+            pickle.dump({'tform': tform.inverse, 'template_shape': template.shape}, f)       
         
     else:  # mouse_to_atlas
     # ============ MOUSE → ATLAS workflow ============
         print("\n--- MOUSE → ATLAS workflow ---")
 
         # Register mouse image to atlas space via landmarks.
-        # brain_mask_atlas is the atlas footprint in atlas space.
-        # brain_mask_mouse is its inverse-warp back into mouse space.
+        # Returns: mouse image warped to atlas space, transform, atlas-footprint
+        # brain mask (atlas space), and landmark coordinates for both images.
         mouse_in_atlas, tform, brain_mask_atlas, pts_mouse, pts_atlas = register_atlas_landmarks(
             mean_blue_oriented,
             template,
@@ -277,86 +337,50 @@ def run_pipeline(config_file="config.yaml"):
         )
         print("Mouse → Atlas registration successful")
 
-        # Brain mask step 1: atlas footprint back-projected to mouse space
-        atlas_in_mouse = warp(
-            (atlas_resized > 0).astype(np.uint8),
-            inverse_map=tform,          # tform maps mouse→atlas, so tform itself IS the inverse_map arg here
-            output_shape=mean_blue_oriented.shape,
-            order=0,
-            preserve_range=True,
-            cval=0
-        )
-        atlas_footprint_mouse = atlas_in_mouse.astype(bool)
-        print("Atlas footprint derived in mouse space")
+        # Brain mask step 1: atlas footprint in atlas space (from registration).
+        atlas_footprint_atlas = brain_mask_atlas.copy()
 
-        # Brain mask step 2: user draws a mask over the actual brain FOV (mouse space).
-        # This removes non-brain pixels that fall inside the atlas footprint
-        # (e.g. due to imperfect registration or imaging artefacts at the edges).
-        print("\nDraw a brain mask over the mean image to exclude non-brain pixels.")
+        # Brain mask step 2: user draws a mask on the warped mouse image
+        # (already in atlas space) to exclude non-brain pixels such as
+        # imaging artefacts or areas outside the cranial window.
+        # This mask is then intersected with the atlas footprint so that
+        # the final brain_mask stays within the registered atlas boundary.
+        print("\nDraw a brain mask over the registered mouse image (atlas space).")
         print("This mask will be intersected with the atlas footprint.")
-        user_brain_mask_mouse = make_brain_mask_fixed(
-            mean_blue_oriented,
+        user_brain_mask_atlas = make_brain_mask_fixed(
+            mouse_in_atlas,
             method=config["brain_mask"]["method"],
             qc=config["brain_mask"]["qc"],
-            interactive_correction=False   # one polygon only; no add/subtract loop
+            interactive_correction=False
         )
 
-        # Intersect in mouse space: keep only pixels inside both the atlas footprint and the drawn region
-        brain_mask_mouse = atlas_footprint_mouse & user_brain_mask_mouse
-        print("Mouse-space brain mask created (atlas footprint intersected with user-drawn mask)")
-
-        # Forward-warp the refined mouse-space mask to atlas space so the two masks stay consistent
-        brain_mask_atlas_refined = warp(
-            brain_mask_mouse.astype(np.uint8),
-            inverse_map=tform.inverse,
-            output_shape=template.shape,
-            order=0,
-            preserve_range=True,
-            cval=0
-        ).astype(bool)
-        # Also intersect with the original atlas-space footprint (belt-and-braces)
-        brain_mask_atlas = brain_mask_atlas & brain_mask_atlas_refined
-        print("Atlas-space brain mask updated to match user-drawn mask")
+        # Intersect: keep only pixels inside both the atlas footprint and
+        # the user-drawn region — identical logic to atlas_to_mouse.
+        brain_mask_atlas = atlas_footprint_atlas & user_brain_mask_atlas
+        print("Brain mask created (atlas footprint intersected with user-drawn mask)")
         print("Brain mask creation successful")
-    
-        # --- Apply brain mask in mouse space before transforming ---
-        corrected_blue_masked = blue_hp.copy()
-        corrected_blue_masked[:, ~brain_mask_mouse] = np.nan
-    
-        dff_green_masked = dff_green_oriented.copy()
-        dff_green_masked[:, ~brain_mask_mouse] = np.nan
-    
-        # --- Transform all stacks to atlas space in one pass ---
+
+        # --- Warp data to atlas space ---
         print("Transforming calcium data to atlas space...")
         corrected_blue_atlas = apply_transform_to_stack(
-            corrected_blue_masked, tform, output_shape=template.shape, order=1
+            blue_hp, tform, output_shape=template.shape, order=1
         )
-    
+
         print("Transforming green (dff) data to atlas space...")
         dff_green_atlas = apply_transform_to_stack(
-            dff_green_masked, tform, output_shape=template.shape, order=1
+            green_hp, tform, output_shape=template.shape, order=1
         )
-    
-        # --- Transform reference frames ---
-        #print("Transforming reference frames...")
-        #for ref, name in [(red_ref, "red"), (green_ref, "green"), (blue_ref, "blue")]:
-            #pass  # done below with named variables
-        
-        # green_atlas = warp(green_ref, inverse_map=tform.inverse,
-        #                    output_shape=template.shape, order=1,
-        #                    preserve_range=True, cval=np.nan)
-        # blue_atlas = warp(blue_ref, inverse_map=tform.inverse,
-        #                   output_shape=template.shape, order=1,
-        #                   preserve_range=True, cval=np.nan)
-    
-        # --- Crop atlas to transformed FOV ---
+
+        # --- Crop atlas to the registered FOV ---
+        # Uses the refined brain_mask_atlas (atlas footprint ∩ user mask)
+        # so ROI definitions respect both the atlas boundary and the drawn FOV.
         atlas_masked, valid_regions = crop_atlas_to_fov(
             atlas_resized, brain_mask_atlas,
             min_overlap=config["roi_extraction"]["min_overlap"]
         )
         print(f"Atlas cropped to FOV ({len(valid_regions)} regions)")
-        
-        # --- Extract calcium ROI timecourses (in atlas space) ---
+
+        # --- Extract ROI timecourses (atlas space) ---
         print("\n--- Extracting ROI timecourses ---")
         roi_timecourses, valid_rois = extract_timecourses_from_atlas_fixed(
             data=corrected_blue_atlas,
@@ -367,8 +391,7 @@ def run_pipeline(config_file="config.yaml"):
         )
         print("Calcium ROI time series extracted")
         valid_regions = valid_rois
-    
-        # --- Extract green ROI timecourses (in atlas space) ---
+
         green_timecourses, _ = extract_timecourses_from_atlas_fixed(
             data=dff_green_atlas,
             atlas=atlas_masked,
@@ -377,42 +400,81 @@ def run_pipeline(config_file="config.yaml"):
             qc=config["roi_extraction"]["qc"]
         )
         print("Green ROI time series extracted")
-    
-        # --- Save transform ---
+
+        # Single-wavelength HbT: calibrated modified Beer-Lambert estimate (μM),
+        # using the tabulated extinction coefficients (isosbestic approximation).
+        # Computed in mouse space (raw motion-corrected green), then warped to atlas
+        # space the same way calcium/green data are, and extracted with the same
+        # crop_atlas_to_fov-derived atlas/mask.
+        print("Computing single-wavelength HbT from green channel...")
+        hbt_signal = convert_to_hbt_single_wavelength(
+            green_mc_oriented,
+            baseline_frames=slice(*config["hemodynamic_extraction"]["baseline_frames"]),
+            green_wavelength=config["wavelength"]["green"],
+            pathlength_green=config["hemodynamic_extraction"].get("pathlength_green", 0.057),
+            extinction_filepath=config["hemodynamic_extraction"]["extinction_filepath"]
+        )
+        print("Transforming HbT data to atlas space...")
+        hbt_atlas = apply_transform_to_stack(
+            hbt_signal, tform, output_shape=template.shape, order=1
+        )
+        hbt_timecourses, _ = extract_timecourses_from_atlas_fixed(
+            data=hbt_atlas,
+            atlas=atlas_masked,
+            brain_mask=brain_mask_atlas,
+            min_overlap=config["roi_extraction"]["min_overlap"],
+            qc=config["roi_extraction"]["qc"]
+        )
+        hemo_roi_timecourses = {'hbt': hbt_timecourses}
+        hemo_pixel_timecourses = {'hbt': hbt_atlas}
+        print("HbT (single-wavelength) ROI time series extracted")
+
+        # --- Save outputs ---
+        # transform: used by nf pipelines to warp subsequent runs to atlas space.
+        # atlas_masked: the atlas label image cropped to this session's FOV;
+        #               shared with all nf runs so ROI definitions are identical.
+        # brain_mask: atlas-space footprint used for ROI extraction.
+        # green_ref / blue_ref: median frames in mouse space (pre-rotation)
+        #               used by nf pipelines for motion correction.
         with open(config["output"]["transform"], "wb") as f:
             pickle.dump({'tform': tform, 'template_shape': template.shape}, f)
         print("Transform saved")
-    
-        # --- Save all outputs ---
+
         print("\n--- Saving outputs ---")
-    
+
         with open(config["output"]["pixel_ts"], "wb") as f:
             pickle.dump(corrected_blue_atlas, f)
-    
+
         with open(config["output"]["roi_ts"], "wb") as f:
             pickle.dump(roi_timecourses, f)
-    
+
         with open(config["output"]["green_pixel"], "wb") as f:
             pickle.dump(dff_green_atlas, f)
-    
+
         with open(config["output"]["green_ts"], "wb") as f:
             pickle.dump(green_timecourses, f)
-    
+
+        with open(config["output"]["hemo_ts"], "wb") as f:
+            pickle.dump(hemo_roi_timecourses, f)
+
+        with open(config["output"]["hemopixel_ts"], "wb") as f:
+            pickle.dump(hemo_pixel_timecourses, f)
+
         with open(config["output"]["roi_id"], "wb") as f:
             pickle.dump(valid_regions, f)
-    
+
         with open(config["output"]["atlas_mask"], "wb") as f:
             pickle.dump(atlas_masked, f)
-    
+
         with open(config["output"]["brain_mask"], "wb") as f:
             pickle.dump(brain_mask_atlas, f)
-    
+
         with open(config["output"]["green_ref"], "wb") as f:
             pickle.dump(green_ref, f)
-    
+
         with open(config["output"]["blue_ref"], "wb") as f:
             pickle.dump(blue_ref, f)
-    
+
         print("\nAll files saved")
         print("Preprocessing was successful")
     
@@ -433,6 +495,8 @@ def run_pipeline(config_file="config.yaml"):
         print("  → Data is in native mouse space")
         print("  → Atlas warped to match your FOV")
     print(f"Number of ROIs extracted: {len(valid_regions)}")
+    print("Hemodynamic signals: ['hbt'] (single-wavelength, calibrated \u03bcM, isosbestic approximation)")
+    print("="*60)
 
     return
 
